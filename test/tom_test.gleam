@@ -1,11 +1,14 @@
 import gleam/dict
 import gleam/dynamic/decode
+import gleam/list
 import gleam/result
 import gleam/time/calendar
 import gleam/time/duration
 import gleam/time/timestamp
 import gleeunit
+
 import tom
+import tom/encoder
 
 pub fn main() {
   gleeunit.main()
@@ -1351,4 +1354,146 @@ pub fn to_dynamic_timestamp_local_fails_test() {
 
   assert decode.run(dynamic, decoder)
     == Error([decode.DecodeError("DateTime with offset", "Dict", ["a"])])
+}
+
+pub fn encode_int_test() {
+  assert encoder.to_string(tom.Int(67)) == "67"
+}
+
+pub fn encode_float_test() {
+  assert encoder.to_string(tom.Float(6.7)) == "6.7"
+}
+
+pub fn encode_infinity_test() {
+  assert encoder.to_string(tom.Infinity(tom.Positive)) == "+inf"
+  assert encoder.to_string(tom.Infinity(tom.Negative)) == "-inf"
+}
+
+pub fn encode_nan_test() {
+  assert encoder.to_string(tom.Nan(tom.Positive)) == "+nan"
+  assert encoder.to_string(tom.Nan(tom.Negative)) == "-nan"
+}
+
+pub fn encode_bool_test() {
+  assert encoder.to_string(tom.Bool(False)) == "false"
+  assert encoder.to_string(tom.Bool(True)) == "true"
+}
+
+pub fn encode_string_test() {
+  assert encoder.to_string(tom.String("hello, world")) == "\"hello, world\""
+}
+
+pub fn encode_date_test() {
+  assert encoder.to_string(tom.Date(calendar.Date(1979, calendar.May, 27)))
+    == "1979-05-27"
+
+  assert encoder.to_string(tom.Date(calendar.Date(1979, calendar.November, 27)))
+    == "1979-11-27"
+}
+
+pub fn encode_time_test() {
+  assert encoder.to_string(tom.Time(calendar.TimeOfDay(00, 32, 00, 999)))
+    == "00:32:00.999"
+}
+
+pub fn encode_date_time_test() {
+  assert encoder.to_string(tom.DateTime(
+      calendar.Date(1979, calendar.November, 27),
+      calendar.TimeOfDay(00, 32, 00, 999),
+      tom.Local,
+    ))
+    == "1979-11-27T00:32:00.999"
+
+  assert encoder.to_string(tom.DateTime(
+      calendar.Date(1979, calendar.November, 27),
+      calendar.TimeOfDay(00, 32, 00, 999),
+      tom.Offset(duration.hours(12)),
+    ))
+    == "1979-11-27T00:32:00.999+12:00"
+}
+
+pub fn encode_array_test() {
+  let strs = ["hello", "world"] |> list.map(tom.String)
+  assert encoder.to_string(tom.Array(strs)) == "[\"hello\", \"world\"]"
+
+  let ints = [1, 2, 3] |> list.map(tom.Int)
+  assert encoder.to_string(tom.Array(ints)) == "[1, 2, 3]"
+}
+
+pub fn encoder_inline_test() {
+  let inline_table =
+    dict.from_list([
+      #("name", tom.String("table-name")),
+      #("version", tom.String("1.0.0")),
+    ])
+  assert encoder.to_string(tom.InlineTable(inline_table))
+    == "{ name = \"table-name\", version = \"1.0.0\" }"
+}
+
+pub fn encode_table_test() {
+  let table =
+    dict.from_list([
+      #(
+        "root",
+        tom.Table(
+          dict.from_list([
+            #("name", tom.String("tom")),
+            #("version", tom.String("2.1.0")),
+            #("description", tom.String("A pure Gleam TOML parser!")),
+          ]),
+        ),
+      ),
+    ])
+
+  assert encoder.to_string(tom.Table(table))
+    == "[root]\ndescription = \"A pure Gleam TOML parser!\"\nname = \"tom\"\nversion = \"2.1.0\""
+}
+
+pub fn encode_array_of_tables_test() {
+  let table1 =
+    dict.from_list([
+      #(
+        "servers",
+        tom.Table(
+          dict.from_list([
+            #("name", tom.String("alpha")),
+            #("ip", tom.String("10.0.0.1")),
+            #("role", tom.String("frontend")),
+          ]),
+        ),
+      ),
+    ])
+
+  let table2 =
+    dict.from_list([
+      #(
+        "servers",
+        tom.Table(
+          dict.from_list([
+            #("name", tom.String("beta")),
+            #("ip", tom.String("10.0.0.2")),
+            #("role", tom.String("backend")),
+          ]),
+        ),
+      ),
+    ])
+
+  let table3 =
+    dict.from_list([
+      #(
+        "servers",
+        tom.Table(
+          dict.from_list([
+            #("name", tom.String("charlie")),
+            #("ip", tom.String("10.0.0.3")),
+            #("role", tom.String("database")),
+          ]),
+        ),
+      ),
+    ])
+
+  let tables = [table1, table2, table3]
+
+  assert encoder.to_string(tom.ArrayOfTables(tables))
+    == "[[servers]]\nip = \"10.0.0.1\"\nname = \"alpha\"\nrole = \"frontend\"\n\n[[servers]]\nip = \"10.0.0.2\"\nname = \"beta\"\nrole = \"backend\"\n\n[[servers]]\nip = \"10.0.0.3\"\nname = \"charlie\"\nrole = \"database\""
 }

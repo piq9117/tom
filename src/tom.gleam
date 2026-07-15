@@ -631,7 +631,10 @@ fn merge(
   }
 }
 
-fn expect_end_of_line(input: Tokens, next: fn(Tokens) -> Parsed(a)) -> Parsed(a) {
+fn expect_end_of_line(
+  input: Tokens,
+  next: fn(Tokens) -> Parsed(a),
+) -> Parsed(a) {
   case input {
     ["\n", ..input] -> next(input)
     ["\r\n", ..input] -> next(input)

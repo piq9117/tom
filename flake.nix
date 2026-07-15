@@ -6,15 +6,16 @@
     nix-gleam.url = github:arnarg/nix-gleam;
   };
 
-  outputs = { self, nixpkgs, nix-gleam }: 
+  outputs = { self, nixpkgs, nix-gleam }:
     let
       forAllSystems = nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed;
-      nixpkgsFor = forAllSystems(system: import nixpkgs {
+      nixpkgsFor = forAllSystems (system: import nixpkgs {
         inherit system;
         overlays = [ self.overlays nix-gleam.overlays.default ];
 
       });
-    in {
+    in
+    {
       overlays = final: prev: {
         tom = final.buildGleamApplication {
           pname = "tom";
@@ -23,17 +24,19 @@
         };
       };
 
-      packages = forAllSystems(system: 
+      packages = forAllSystems (system:
         let
           pkgs = nixpkgsFor.${system};
-        in {
+        in
+        {
           default = pkgs.tom;
         });
 
-      devShells = forAllSystems(system: 
+      devShells = forAllSystems (system:
         let
           pkgs = nixpkgsFor.${system};
-        in {
+        in
+        {
           default = pkgs.mkShell {
             buildInputs = with pkgs; [
               gleam
